@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
+# Install NVIDIA GPU powerlimit script and systemd unit file
 
 # Putet Systems Labs
-# InstallNVIDIA GPU powerlimit script and systemd unit file
+# https://pugetsystems.com
 #
-# Copyright CC0 2022 Puget Systems and D B Kinghorn
-# 
+# Copyright 2022 Puget Systems and D B Kinghorn
+# CC0 v1 license
+#
 # Disclaimer of Liability:
 # Puget Systems and D B Kinghorn do not warrant 
 # or assume any legal liability or responsibility for the use of this script
