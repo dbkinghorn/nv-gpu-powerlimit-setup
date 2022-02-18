@@ -150,13 +150,16 @@ source ${CONFIG_FILE}
 POWER_LIMIT=${POWERLIMIT}
 MAX_POWER_LIMIT=$(nvidia-smi -q -d POWER | grep 'Max Power Limit' | tr -s ' ' | cut -d ' ' -f 6)
 
-if [[ ${POWER_LIMIT%.*}+0 -lt ${MAX_POWER_LIMIT%.*}+0 ]]; then
+# ToDo:
+# Max power limit check is blocking for multi-GPU
+# will fix with arrays when I add support for setting independent power limits
+#if [[ ${POWER_LIMIT%.*}+0 -lt ${MAX_POWER_LIMIT%.*}+0 ]]; then
     /usr/bin/nvidia-smi --persistence-mode=1
     /usr/bin/nvidia-smi  --power-limit=${POWER_LIMIT}
-else
-    echo 'FAIL! POWER_LIMIT set above MAX_POWER_LIMIT ... '
-    exit 1
-fi
+#else
+#    echo 'FAIL! POWER_LIMIT set above MAX_POWER_LIMIT ... '
+#    exit 1
+#fi
 
 exit 0
 
