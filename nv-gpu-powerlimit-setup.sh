@@ -113,7 +113,7 @@ note "Creating /usr/local/etc/nv-powerlimit.conf"
 cat << EOF > /usr/local/etc/nv-power-limit.conf
 # NVIDIA GPU powerlimit config file
 
-# limit should probably be between 200 and 300
+# limit should be between the min and max powerlimit values
 # i.e. 280 should still give over 95 percent performance on a 350W GPU
 
 POWERLIMIT=${POWERLIMIT}
@@ -175,6 +175,10 @@ fi
 note "setting permissions: chmod 744 on /usr/local/sbin/nv-power-limit.sh"
 chmod 744 /usr/local/sbin/nv-power-limit.sh
 
+#!! as workaround for systemd bug in Ubuntu 20.04 we'll run the script manually
+note "Running nv-power-limit.sh"
+sudo /usr/local/sbin/nv-power-limit.sh
+nvidia-smi -q -d POWER 
 
 #
 # Install nv-power-limit.service
