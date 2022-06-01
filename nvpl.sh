@@ -34,9 +34,9 @@ This script will;
 - interactively set powerlimits for NVIDIA GPUs found on system
 - OPTIONALLY: 
 - create a config /usr/local/etc/nv-powerlimit.conf with the powerlimit values
-- create and install /usr/local/sbin/nv-power-limit.sh
-- create and install /etc/systemd/system/nv-power-limit.service
-- enable nv-power-limit.service
+- create and install /usr/local/sbin/nv-powerlimit.sh
+- create and install /etc/systemd/system/nv-powerlimit.service
+- enable nv-powerlimit.service
 '
     exit 0
 fi
@@ -134,9 +134,9 @@ show_gpu_state
 note "Save setting and restore on reboot? (y/n)"
 read save_config
 if [[ $save_config == "y" ]]; then
-    declare -p gpu_power_limits >/etc/nv-powerlimit.conf && success "Saved config to /etc/nv-powerlimit.conf"
-    note "setting permission chmod 644 on /usr/local/etc/nv-power-limit.conf"
-    chmod 644 /etc/nv-power-limit.conf
+    declare -p gpu_power_limits >/etc/nv-powerlimit.conf
+    note "setting permission chmod 644 on /etc/nv-powerlimit.conf"
+    chmod 644 /etc/nv-powerlimit.conf
 else
     note "Not saving..."
     note "You will need to rerun this script to set power limits after reboot"
@@ -144,7 +144,7 @@ else
 fi
 
 #
-# Install nv-power-limit.sh
+# Install nv-powerlimit.sh
 #
 CONFIG_FILE=/etc/nv-powerlimit.conf
 [ -f "$CONFIG_FILE" ] || {
@@ -152,15 +152,15 @@ CONFIG_FILE=/etc/nv-powerlimit.conf
     exit 1
 }
 
-note "Creating /usr/local/sbin/nv-power-limit.sh"
+note "Creating /usr/local/sbin/nv-powerlimit.sh"
 
-sudo tee /usr/local/sbin/nv-power-limit.sh <<'EOF'
+sudo tee /usr/local/sbin/nv-powerlimit.sh <<'EOF'
 #!/usr/bin/env bash
 
 # Set power limits for NVIDIA GPUs
 # powerlimits sourced from /etc/nv-powerlimit.conf
 
-CONFIG_FILE=/etc/nv-power-limit.conf
+CONFIG_FILE=/etc/nv-powerlimit.conf
 source ${CONFIG_FILE} # defines the array "gpu_power_limits"
 
 for gpu_index in "${!gpu_power_limits[@]}"; do
@@ -173,24 +173,24 @@ exit 0
 
 EOF
 
-if [[ -f /usr/local/sbin/nv-power-limit.sh ]]; then
-    success "[OK] /usr/local/sbin/nv-power-limit.sh created"
+if [[ -f /usr/local/sbin/nv-powerlimit.sh ]]; then
+    success "[OK] /usr/local/sbin/nv-powerlimit.sh created"
 else
-    error "[Failed] /usr/local/sbin/nv-power-limit.sh not created"
+    error "[Failed] /usr/local/sbin/nv-powerlimit.sh not created"
     exit 1
 fi
 
-note "setting permissions: chmod 744 on /usr/local/sbin/nv-power-limit.sh"
-chmod 744 /usr/local/sbin/nv-power-limit.sh
+note "setting permissions: chmod 744 on /usr/local/sbin/nv-powerlimit.sh"
+chmod 744 /usr/local/sbin/nv-powerlimit.sh
 
 #
-# Install nv-power-limit.service
+# Install nv-powerlimit.service
 #
 
-note "Creating /usr/local/etc/systemd/system/nv-power-limit.service"
+note "Creating /usr/local/etc/systemd/system/nv-powerlimit.service"
 mkdir -p /usr/local/etc/systemd/system
 
-sudo tee /usr/local/etc/systemd/system/nv-power-limit.service <<'EOF'
+sudo tee /usr/local/etc/systemd/system/nv-powerlimit.service <<'EOF'
 [Unit]
 Description=NVIDIA GPU Set Power Limit
 After=syslog.target systemd-modules-load.service
@@ -199,7 +199,7 @@ ConditionPathExists=/usr/bin/nvidia-smi
 [Service]
 User=root
 Environment="PATH=/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin"
-ExecStart=/usr/local/sbin/nv-power-limit.sh
+ExecStart=/usr/local/sbin/nv-powerlimit.sh
 
 [Install]
 WantedBy=multi-user.target
@@ -207,23 +207,23 @@ WantedBy=multi-user.target
 EOF
 
 if [[ -f /usr/local/etc/systemd/system/nv-power-limit.service ]]; then
-    success "[OK] /usr/local/etc/systemd/system/nv-power-limit.service created"
+    success "[OK] /usr/local/etc/systemd/system/nv-powerlimit.service created"
 else
-    error "[Failed] /usr/local/etc/systemd/system/nv-power-limit.service not created"
+    error "[Failed] /usr/local/etc/systemd/system/nv-powerlimit.service not created"
     exit 1
 fi
 
-note "setting permissions: chmod 644 on /usr/local/etc/systemd/system/nv-power-limit.service"
-chmod 644 /usr/local/etc/systemd/system/nv-power-limit.service
+note "setting permissions: chmod 644 on /usr/local/etc/systemd/system/nv-powerlimit.service"
+chmod 644 /usr/local/etc/systemd/system/nv-powerlimit.service
 
 #
 # Enable nv-power-limit.service
 #
-note "linking /usr/local/etc/systemd/system/nv-power-limit.service to /etc/systemd/system/nv-power-limit.service"
-ln -s --force /usr/local/etc/systemd/system/nv-power-limit.service /etc/systemd/system/nv-power-limit.service
+note "linking /usr/local/etc/systemd/system/nv-powerlimit.service to /etc/systemd/system/nv-powerlimit.service"
+ln -s --force /usr/local/etc/systemd/system/nv-powerlimit.service /etc/systemd/system/nv-powerlimit.service
 
-systemctl enable nv-power-limit.service
+systemctl enable nv-powerlimit.service
 
-success "Finished setting NVIDIA GPU power-limit service"
+success "Finished setting NVIDIA GPU powerlimit service"
 
 exit 0
