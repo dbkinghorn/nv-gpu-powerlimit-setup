@@ -20,7 +20,7 @@
 
 if [[ "$1" == "--help" ]]; then
     printf '
-USAGE:  sudo ./nv-powerlimit-setup-0.2.1.sh \n
+USAGE:  sudo ./nvpl.sh \n
 You will be prompted for powerlimits to set.
 
 OPTIONALLY a config file will be stored in /usr/local/etc/nv-powerlimit.conf
@@ -38,6 +38,7 @@ This script will;
 - create and install /usr/local/sbin/nv-powerlimit.sh
 - create and install /etc/systemd/system/nv-powerlimit.service
 - enable nv-powerlimit.service
+
 '
     exit 0
 fi
@@ -120,13 +121,12 @@ declare -A gpu_power_limits
 
 for gpu_index in "${gpu_indexes[@]}"; do
     MIN_PL=$(nvidia-smi --id=$gpu_index --query-gpu=power.min_limit --format=csv,noheader)
-    MAX_PL=$(nvidia-smi --id=$gpu_index --query-gpu=power.max_limit --format=csv,noheader)
-    echo "Please enter power limit for GPU ${gpu_index} (min: ${MIN_PL}, max: ${MAX_PL})"
+    DEFAULT_PL=$(nvidia-smi --id=$gpu_index --query-gpu=power.default_limit --format=csv,noheader)
+    echo "Please enter power limit for GPU ${gpu_index} (min: ${MIN_PL}, default: ${DEFAULT_PL})"
     read gpu_power_limit
     gpu_power_limits[$gpu_index]=$gpu_power_limit
     nvidia-smi --id=$gpu_index -pm ENABLED && success "GPU ${gpu_index} persistence enabled"
     nvidia-smi --id=$gpu_index --power-limit=$gpu_power_limit && success "GPU ${gpu_index} power limit set to ${gpu_power_limit}"
-    #echo "GPU $gpu_index power limit set to = ${gpu_power_limits[$gpu_index]}"
 done
 
 success "Power Limit Status of NVIDIA GPUs"
@@ -166,8 +166,8 @@ source ${CONFIG_FILE} # defines the array "gpu_power_limits"
 
 for gpu_index in "${!gpu_power_limits[@]}"; do
     nvidia-smi --id=$gpu_index -pm ENABLED && echo "GPU ${gpu_index} persistence enabled"
-    nvidia-smi --id=$gpu_index --power-limit=$gpu_power_limits[$gpu_index] 
-    echo "GPU $gpu_index power limit set to = ${gpu_power_limits[$gpu_index]}"
+    nvidia-smi --id=$gpu_index --power-limit=${gpu_power_limits[$gpu_index]} && \ 
+        echo "GPU $gpu_index power limit set to = ${gpu_power_limits[$gpu_index]}"
 done
 
 exit 0
@@ -207,7 +207,7 @@ WantedBy=multi-user.target
 
 EOF
 
-if [[ -f /usr/local/etc/systemd/system/nv-power-limit.service ]]; then
+if [[ -f /usr/local/etc/systemd/system/nv-powerlimit.service ]]; then
     success "[OK] /usr/local/etc/systemd/system/nv-powerlimit.service created"
 else
     error "[Failed] /usr/local/etc/systemd/system/nv-powerlimit.service not created"

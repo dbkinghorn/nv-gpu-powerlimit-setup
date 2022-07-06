@@ -33,9 +33,21 @@ This script will;
 - enable nv-powerlimit.service
 ```
 
+## Uninstall
+
+To completely remove a systemd setup added by this script remove,
+
+```
+sudo rm /etc/nv-powerlimit.conf
+sudo rm /usr/local/sbin/nv-powerlimit.sh
+sudo rm /usr/local/etc/systemd/system/nv-powerlimit.service
+sudo rm /etc/systemd/system/nv-powerlimit.service
+```
+
 ### ToDo:
 
-- Next version will add flags for non-interactive use
+- add uninstall option
+- add flags for non-interactive use
   i.e. `nvpl.sh --powerlimit 0:300 1:280 --set-at-boot`
 
 ## Motivation:
