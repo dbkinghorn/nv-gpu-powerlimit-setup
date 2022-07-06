@@ -28,6 +28,7 @@ and a systemd unit file will be created and installed to reset powerlimits on bo
 
 see:
 https://www.pugetsystems.com/labs/hpc/Quad-RTX3090-GPU-Power-Limiting-with-Systemd-and-Nvidia-smi-1983/
+for concept and motivation.
 
 This script will;
 - make sanity checks for OS version and NVIDIA GPUs
