@@ -3,9 +3,9 @@
 # install powerlimit script and systemd unit file
 # to set power limits on boot.
 
-# VERSION=0.2.0
+# VERSION=0.2.1
 
-# Putet Systems Labs
+# Puget Systems Labs
 # https://pugetsystems.com
 #
 # Copyright 2022 Puget Systems and D B Kinghorn
@@ -18,28 +18,120 @@
 # Start install log. Will go to install.log
 # (  # uncomment this line and # ) at end of file to enable logging
 
-if [[ "$1" == "--help" ]]; then
-    printf '
-USAGE:  sudo ./nv-powerlimit-setup-0.2.1.sh \n
-You will be prompted for powerlimits to set.
+# Set variables
+VERSION="0.2.1"
 
-OPTIONALLY a config file will be stored in /usr/local/etc/nv-powerlimit.conf
-and a systemd unit file will be created and installed to reset powerlimits on boot.
+function show_usage() {
+    cat <<EOF
 
-see:
-https://www.pugetsystems.com/labs/hpc/Quad-RTX3090-GPU-Power-Limiting-with-Systemd-and-Nvidia-smi-1983/
+nv-gpu-powerlimit-setup.sh version $VERSION 
 
-This script will;
-- make sanity checks for OS version and NVIDIA GPUs
-- interactively set powerlimits for NVIDIA GPUs found on system
-- OPTIONALLY: 
-- create a config /usr/local/etc/nv-powerlimit.conf with the powerlimit values
-- create and install /usr/local/sbin/nv-power-limit.sh
-- create and install /etc/systemd/system/nv-power-limit.service
-- enable nv-power-limit.service
-'
-    exit 0
-fi
+Usage: 
+    sudo ./nv-powerlimit-setup-0.2.1.sh [options]
+    
+    Without options:
+        Interactively: set power limits for detected NVIDIA GPUs and optionally
+        install powerlimit script and systemd unit file
+        to set power limits on boot.
+
+    see: 
+    https://www.pugetsystems.com/labs/hpc/Quad-RTX3090-GPU-Power-Limiting-with-Systemd-and-Nvidia-smi-1983/
+
+    
+Options:
+    -h, --help
+        show this help message and exit
+    
+    -v, --version
+        show version and exit
+        
+    -s, --status
+        show current power limit settings for all NVIDIA GPUs
+
+    -p, --powerlimits
+        a list of power limits to set for each NVIDIA GPU in the form:
+        <gpu_id>:<power_limit>  
+        example -p 0:280 1:270  (any gpu_id not set will keep its current powerlimit)
+        use -s or --status to see current gpu_ids and power limits
+
+    -b, --boot
+        create and enable nv-power-limit.service to run on boot
+
+Examples:
+    check powerlimits:
+        ./nv-gpu-powerlimit-setup.sh --status
+
+    set powerlimits and install systemd unit file:
+        sudo ./nv-powerlimit-setup-0.2.1.sh -p 0:280 1:270 -b
+EOF
+}
+
+function show_gpu_state() {
+    OUT=$(nvidia-smi --query-gpu=index,gpu_name,persistence_mode,power.default_limit,power.limit --format=csv)
+    echo "$OUT" | column -s , -t
+}
+
+while :; do
+    case $1 in
+    -h | --help)
+        show_usage
+        exit 0
+        ;;
+    -v | --version)
+        printf "nv-power-limit-setup: %s\n" "${VERSION}"
+        exit 0
+        ;;
+    -s | --status)
+        show_gpu_state
+        exit 0
+        ;;
+    -p | --powerlimits)
+        if [[ -z "$2" || "$2" =~ ^[-] ]]; then
+            echo "Error: missing power limits"
+            show_usage
+            exit 1
+        fi
+        declare -A POWERLIMITS
+        while [[ "$*" ]]; do
+            shift
+            #echo $1
+            # handle un-quoted input
+            if [[ $1 =~ ^[0-9]+:[[:digit:]]+$ ]]; then
+                POWERLIMITS[$(echo "$1" | cut -d: -f1)]=$(echo "$1" | cut -d: -f2)
+            # handle quoted input
+            elif ! [[ "$1" =~ ^[-] ]]; then
+                IFS=" " read -ra quoted_array <<<"$1"
+                for i in "${quoted_array[@]}"; do
+                    POWERLIMITS[$(echo "$i" | cut -d: -f1)]=$(echo "$i" | cut -d: -f2)
+                done
+            else # we got another option
+                break
+            fi
+        done
+        declare -p POWERLIMITS
+        ;;
+    -b | --boot)
+        do_systemd=1
+        shift
+        echo "Enabling nv-power-limit.service to run on boot"
+        ;;
+    --) # End of all options.
+        shift
+        break
+        ;;
+    -*) # Invalid options.
+        printf >&2 "ERROR: Invalid flag '%s'\n\n" "$1"
+        show_usage
+        exit 1
+        ;;
+    *) # Default case: If no more options then break out of the loop.
+        # If no options specified then run interactive
+        break
+        ;;
+    esac
+done
+
+exit 0
 
 #set -e
 set -o errexit  # exit on errors
@@ -104,27 +196,23 @@ else
     exit 1
 fi
 
-function show_gpu_state() {
-    OUT=$(nvidia-smi --query-gpu=index,gpu_name,persistence_mode,power.default_limit,power.limit --format=csv)
-    echo "$OUT" | column -s , -t
-}
 success "Current Status of NVIDIA GPUs"
 show_gpu_state
 
 # loop over found GPUs and set power limits
 declare -a gpu_indexes
-gpu_indexes=($(nvidia-smi --query-gpu=index --format=csv,noheader))
+IFS=" " read -ra gpu_indexes <<<"$(nvidia-smi --query-gpu=index --format=csv,noheader)"
 
 declare -A gpu_power_limits
 
 for gpu_index in "${gpu_indexes[@]}"; do
-    MIN_PL=$(nvidia-smi --id=$gpu_index --query-gpu=power.min_limit --format=csv,noheader)
-    MAX_PL=$(nvidia-smi --id=$gpu_index --query-gpu=power.max_limit --format=csv,noheader)
+    MIN_PL=$(nvidia-smi --id="$gpu_index" --query-gpu=power.min_limit --format=csv,noheader)
+    MAX_PL=$(nvidia-smi --id="$gpu_index" --query-gpu=power.max_limit --format=csv,noheader)
     echo "Please enter power limit for GPU ${gpu_index} (min: ${MIN_PL}, max: ${MAX_PL})"
-    read gpu_power_limit
+    read -r gpu_power_limit
     gpu_power_limits[$gpu_index]=$gpu_power_limit
-    nvidia-smi --id=$gpu_index -pm ENABLED && success "GPU ${gpu_index} persistence enabled"
-    nvidia-smi --id=$gpu_index --power-limit=$gpu_power_limit && success "GPU ${gpu_index} power limit set to ${gpu_power_limit}"
+    nvidia-smi --id="$gpu_index" -pm ENABLED && success "GPU ${gpu_index} persistence enabled"
+    nvidia-smi --id="$gpu_index" --power-limit="$gpu_power_limit" && success "GPU ${gpu_index} power limit set to ${gpu_power_limit}"
     #echo "GPU $gpu_index power limit set to = ${gpu_power_limits[$gpu_index]}"
 done
 
@@ -132,7 +220,7 @@ success "Power Limit Status of NVIDIA GPUs"
 show_gpu_state
 
 note "Save setting and restore on reboot? (y/n)"
-read save_config
+read -r save_config
 if [[ $save_config == "y" ]]; then
     declare -p gpu_power_limits >/etc/nv-powerlimit.conf && success "Saved config to /etc/nv-powerlimit.conf"
     note "setting permission chmod 644 on /usr/local/etc/nv-powerlimit.conf"
