@@ -2,7 +2,7 @@
 
 ## NVIDIA GPU Powerlimit Setup Script
 
-### nvpl.sh -- VERSION: 0.2
+### nvpl.sh -- VERSION: 0.2.1
 
 This scrip can be used to interactively change the powerlimits for detected NVIDIA GPUs. Optionally it will create and install a systemd unit file that will set the powerlimits for NVIDIA GPUs at system boot.
 
