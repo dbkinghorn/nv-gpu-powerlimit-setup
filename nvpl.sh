@@ -68,7 +68,7 @@ function error() { echo "${ERRORCOLOR}${@}${RESET}" >&2; }
 
 # Check for root/sudo
 if [[ $(id -u) -ne 0 ]]; then
-    echo "Please use sudo to run this script"
+    echo "Please use sudo or root to run this script"
     exit 1
 fi
 
@@ -82,7 +82,15 @@ source /etc/os-release
 if [[ $NAME == "Ubuntu" ]] && [[ ${VERSION_ID/./}+0 -ge 1804 ]]; then
     success "[OK] ${PRETTY_NAME}"
 else
-    error "[STOP] Script only validated for Ubuntu 18.04 or greater"
+    note "[WARNING] Script only tested for Ubuntu 18.04 or greater"
+fi
+
+note "Checking systemd version ..."
+SYSTEMD_VERSION=$(systemctl --version | head -n 1 | cut -d " " -f 2)
+if [[ ${SYSTEMD_VERSION/./}+0 -ge 237 ]]; then
+    success "[OK] ${SYSTEMD_VERSION}"
+else
+    error "[STOP] Script only validated for systemd v2.37 or greater"
     exit 1
 fi
 
